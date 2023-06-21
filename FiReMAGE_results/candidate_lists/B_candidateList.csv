@@ -1,0 +1,8 @@
+"loci","Orthogroup","trait","Gene Name","org","Chromosome Name","bp","start","end","Gene Start (bp)","Gene End (bp)","Description","present","genecount","gFDR","pFDR","rank","rank_new"
+"Zmays_RefGen_V4_B_1_228373078","OG0009372","B","Zm00001d032500","Zmays_RefGen_V4",1,228373078,228273078,228473078,228443001,228447048,"(1 of 13) 3.4.11.18 - Methionyl aminopeptidase / Peptidase M",3,2,0.5,0.5035,0.14895,0.26811
+"Zmays_RefGen_V4_B_1_228373078","OG0012117","B","Zm00001d032497","Zmays_RefGen_V4",1,228373078,228273078,228473078,228417306,228418654,"(1 of 1) PF07086 - Jagunal, ER re-organisation during oogenesis (Jagunal)",3,2,0.5,0.5035,0.14895,0.26811
+"Sbicolor_v3.1.1_B_1_18055105","OG0009372","B","Sobic.001G199100","Sbicolor_v3.1.1",1,18055105,17955105,18155105,17976710,17989473,"similar to Methionine aminopeptidase",3,2,0.5,0.5345,0.13965,0.25137
+"Sbicolor_v3.1.1_B_1_18055105","OG0012117","B","Sobic.001G198900","Sbicolor_v3.1.1",1,18055105,17955105,18155105,17960495,17964032,"similar to Os10g0508600 protein",3,2,0.5,0.5345,0.13965,0.25137
+"Gmax_Wm82.a2.v1_B_18_52405077","OG0012117","B","Glyma.18G235100","Gmax_Wm82.a2.v1",18,52405077,52205077,52605077,52355388,52363290,"PF07086 - Jagunal, ER re-organisation during oogenesis (Jagunal)  (1 of 2)",3,1,0,0.668333333333333,0.199,0.199
+"Gmax_Wm82.a2.v1_B_3_3327118","OG0009372","B","Glyma.03G028800","Gmax_Wm82.a2.v1",3,3327118,3127118,3562229,3132472,3139928,"PTHR10804:SF13 - METHIONINE AMINOPEPTIDASE 1 (1 of 2)",3,1,0,0.668333333333333,0.199,0.199
+"Gmax_Wm82.a2.v1_B_9_47598386","OG0012117","B","Glyma.09G257500","Gmax_Wm82.a2.v1",9,47598386,47398386,48051315,47646061,47653232,"PF07086 - Jagunal, ER re-organisation during oogenesis (Jagunal)  (1 of 2)",3,1,0,0.668333333333333,0.199,0.199
