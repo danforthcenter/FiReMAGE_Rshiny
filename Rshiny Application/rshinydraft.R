@@ -4,6 +4,7 @@ library(plotly)
 library(shinydashboard)
 library(reactable)
 library(shinyWidgets)
+library(RColorBrewer)
 
 # Load the data outside of the server function
 snps_subset <- read_csv("C:/Users/srava/Desktop/Intern/snps_subset.csv")
