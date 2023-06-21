@@ -3,6 +3,7 @@ library(readr)
 library(ggplot2)
 library(plotly)
 library(dplyr)
+library(RColorBrewer)
 
 # User interface
 # User interface
