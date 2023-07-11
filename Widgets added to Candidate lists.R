@@ -54,7 +54,17 @@ server <- function(input, output) {
   data_list <- reactive({
     lapply(processed_files(), function(fp) {
       if (!dir.exists(fp)) {
-        data.table::fread(fp, sep = ",", header = T)
+        data.table::fread(fp, sep = ",", header = T, select = c(
+          "org",
+          "loci",
+          "Orthogroup",
+          "trait",
+          "Gene Name",
+          "Description",
+          "present",
+          "genecount",
+          "pFDR"
+        ))
       }
     })
   })
