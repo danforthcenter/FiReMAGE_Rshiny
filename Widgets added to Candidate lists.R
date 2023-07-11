@@ -27,7 +27,11 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Violin Plot", plotOutput("candidatePlot")),
         tabPanel("Upset Plot", plotOutput("upsetPlot")),
-        tabPanel("Summary Table", tableOutput("summaryTable"))
+        tabPanel("Summary Table",
+                 fluidRow(
+                   column(width = 6, h2("summary"),tableOutput("summaryTable")),
+                   column(width = 6, h2("Full table"),tableOutput("ViewList"))))
+
       )
     )
   )
@@ -54,10 +58,23 @@ server <- function(input, output) {
   data_list <- reactive({
     lapply(processed_files(), function(fp) {
       if (!dir.exists(fp)) {
-        data.table::fread(fp, sep = ",", header = T)
+        data.table::fread(fp, sep = ",", header = T, select = c(
+          "org",
+          "loci",
+          "Orthogroup",
+          "trait",
+          "Gene Name",
+          "Description",
+          "present",
+          "genecount",
+          "pFDR"
+        ))
+        
       }
     })
   })
+  
+  
   
   candidateList <- reactive({
     if (is.null(data_list())) return(NULL)
@@ -135,10 +152,17 @@ server <- function(input, output) {
     )
   })
   
+  output$ViewList <- renderTable({
+    if(is.null(candidateList())) return()
+    fullList<-candidateList()
+    fullList
+    
+  })
+  
   output$summaryTable <- renderTable({
     if (is.null(candidateList())) return()
     candidateList <- candidateList()
-    summary_stats <- candidateList[, .(Mean = mean(pFDR), SD = sd(pFDR)), by = trait]
+    summary_stats <- candidateList[, .(Genes = length(unique(`Gene Name`)), Mean = mean(pFDR), SD = sd(pFDR)), by = .(trait,org,present)]
     summary_stats
   })
 }
