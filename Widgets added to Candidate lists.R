@@ -69,7 +69,7 @@ server <- function(input, output) {
           "genecount",
           "pFDR"
         ))
-        
+
       }
     })
   })
