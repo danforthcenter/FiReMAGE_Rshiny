@@ -26,7 +26,6 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Violin Plot", plotOutput("candidatePlot")),
         tabPanel("Upset Plot", plotOutput("upsetPlot")),
-        tabPanel("Dot Plot", plotOutput("dotPlot")),
         tabPanel("Summary Table",
                  fluidRow(
                    column(width = 8,
@@ -81,6 +80,9 @@ ui <- fluidPage(
     )
   )
 )
+
+
+
 
 # Define server logic 
 server <- function(input, output) {
@@ -196,37 +198,6 @@ server <- function(input, output) {
       themes = upset_default_themes(text = element_text(size = 25))
     )
   })
-  
-  
-  output$dotPlot <- renderPlot({
-    if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait_gene)) return()
-    table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait_gene]
-    
-    # Group by 'Gene Name', 'Orthogroup' and 'Description', then aggregate the traits
-    unique_gene_table <- table[, .(Traits = toString(unique(trait)), Orthogroup = first(Orthogroup), Description = first(Description)), by = `Gene Name`]
-    
-    # Filter for only multi-trait genes and add count of traits
-    unique_gene_table <- unique_gene_table[unlist(lapply(strsplit(unique_gene_table$Traits, split = ", "), length)) > 1]
-    
-    # Add a new column for the count of traits
-    unique_gene_table[, 'TraitCount' := unlist(lapply(strsplit(Traits, split = ", "), length))]
-    
-    # Order by TraitCount in descending order
-    unique_gene_table <- unique_gene_table[order(-TraitCount)]
-    
-    # Expand the data.frame to represent one row per gene per trait
-    expanded_table <- unique_gene_table[, list(Trait = unlist(strsplit(Traits, split = ", "))), by = .(GeneName = `Gene Name`)]
-    
-    # Convert to long format for ggplot
-    expanded_table <- tidyr::pivot_longer(expanded_table, cols = Trait, names_to = "Trait", values_to = "Present")
-    
-    ggplot(expanded_table, aes(x = Trait, y = GeneName)) +
-      geom_jitter(alpha = 0.6) +
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(x = "Traits", y = "Genes", title = "Multi-trait Genes")
-  })
-  
   
   fullTable <- reactiveVal()  # Create a reactive variable to hold the full table
   summaryTable <- reactiveVal()  # Create a reactive variable to hold the summary table
