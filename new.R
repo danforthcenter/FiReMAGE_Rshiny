@@ -51,6 +51,17 @@ ui <- fluidPage(
                           uiOutput("trait_select_gene"), 
                           dataTableOutput("uniqueGeneNamesTable"))
                  )),
+        
+        tabPanel("Multi-trait Orthogroups",
+                 fluidRow(
+                   column(width = 8,
+                          div(class = "row",
+                              div(class = "col-sm-6", h2("Multi-trait Orthogroups")),
+                              div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadMultiTraitOrthogroups", "Download Multi-trait Orthogroups"))
+                          ),
+                          dataTableOutput("multiTraitOrthogroupsTable"))
+                 )),
+        
         tabPanel("Help",
                  fluidRow(
                    column(width = 8, 
@@ -283,7 +294,43 @@ server <- function(input, output) {
     }
   )
   
+  # Create a reactive variable to hold the multi-trait orthogroups table
+  multiTraitOrthogroupsTable <- reactiveVal() 
   
+  # In the server function
+  output$multiTraitOrthogroupsTable <- renderDataTable({
+    if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
+    table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
+    
+    # Group by 'Orthogroup', and aggregate the traits
+    multi_trait_orthogroups <- table[, .(Traits = toString(unique(trait))), by = Orthogroup]
+    
+    # Filter for only multi-trait orthogroups and add count of traits
+    multi_trait_orthogroups <- multi_trait_orthogroups[unlist(lapply(strsplit(multi_trait_orthogroups$Traits, split = ", "), length)) > 1]
+    
+    # Add a new column for the count of traits
+    multi_trait_orthogroups[, 'TraitCount' := unlist(lapply(strsplit(Traits, split = ", "), length))]
+    
+    # Now, create the species present/absent columns
+    species_list <- unique(table$org)  # Get the unique species from the data
+    for (species in species_list) {
+      multi_trait_orthogroups[, paste0("IsPresent_", species) := Orthogroup %in% table[org == species]$Orthogroup]
+    }
+    
+    # Order by TraitCount in descending order
+    multi_trait_orthogroups <- multi_trait_orthogroups[order(-TraitCount)]
+    
+    multiTraitOrthogroupsTable(multi_trait_orthogroups)  # Update the reactive variable for the multi-trait orthogroups table
+    multi_trait_orthogroups
+  })
+  
+  # In the download button function
+  output$downloadMultiTraitOrthogroups <- downloadHandler(
+    filename = "multi_trait_orthogroups_table.csv",
+    content = function(file) {
+      write.csv(multiTraitOrthogroupsTable(), file, row.names = FALSE)
+    }
+  )
 }
 
 # Run the application 
