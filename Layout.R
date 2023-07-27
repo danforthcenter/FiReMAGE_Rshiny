@@ -8,10 +8,8 @@ library(ggrepel)
 library(zip)
 library(dplyr)
 
+
 ui <- fluidPage(
-  tags$style(type="text/css", 
-             "h2 { font-size: 18px; }"
-  ),
   titlePanel("FireMAGE Data Visualization"),
   sidebarLayout(
     sidebarPanel(
@@ -27,21 +25,41 @@ ui <- fluidPage(
     ),
     mainPanel(
       tabsetPanel(
-        tabPanel("Data Visualization", 
-                 fluidRow(
-                   column(
-                     width = 6,
-                     selectInput("panelSelector1", "Select Panel", 
-                                 choices = c("Violin Plot", "Upset Plot", "Summary Table")),
-                     uiOutput("panelDisplay1")
-                   ),
-                   column(
-                     width = 6,
-                     selectInput("panelSelector2", "Select Panel", 
-                                 choices = c("Multi-trait Genes", "Multi-trait Orthogroups")),
-                     uiOutput("panelDisplay2")
-                   )
-                 )),
+        tabPanel("Data Visualization",
+                 tabsetPanel(
+                   tabPanel("Violin Plot", plotOutput("candidatePlot")),
+                   tabPanel("Upset Plot", plotOutput("upsetPlot")),
+                   tabPanel("Summary", 
+                            div(class = "row",
+                                div(class = "col-sm-6", h2("Summary")),
+                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadSummary", "Download Summary"))
+                            ),
+                            dataTableOutput("summaryTable")),
+                   tabPanel("Full Table", 
+                            div(class = "row",
+                                div(class = "col-sm-6", h2("Full table")),
+                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadData", "Download Full Table"))
+                            ),
+                            dataTableOutput("ViewList"))
+                 )
+        ),
+        tabPanel("Multi-trait",
+                 tabsetPanel(
+                   tabPanel("Genes", 
+                            div(class = "row",
+                                div(class = "col-sm-6", h2("Multi-trait Genes")),
+                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadMultiTraitGenes", "Download Multi-trait Genes"))
+                            ),
+                            uiOutput("trait_select_gene"), 
+                            dataTableOutput("uniqueGeneNamesTable")),
+                   tabPanel("Orthogroups", 
+                            div(class = "row",
+                                div(class = "col-sm-6", h2("Multi-trait Orthogroups")),
+                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadMultiTraitOrthogroups", "Download Multi-trait Orthogroups"))
+                            ),
+                            dataTableOutput("multiTraitOrthogroupsTable"))
+                 )
+        ),
         tabPanel("Help",
                  fluidRow(
                    column(width = 8, 
@@ -65,14 +83,15 @@ ui <- fluidPage(
                               p("You can download the Summary Table, Full Table, and Multi-trait Genes Table as CSV files.")
                           )
                    )
-                 ))
+                 )
+        )
       )
     )
   )
 )
 
 # Define server logic 
-server <- function(input, output, session) {
+server <- function(input, output) {
   processed_files <- reactive({
     file_paths <- NULL
     for (i in seq_along(input$files$name)) {
@@ -113,19 +132,6 @@ server <- function(input, output, session) {
   candidateList <- reactive({
     if (is.null(data_list())) return(NULL)
     rbindlist(data_list(), fill = TRUE)
-  })
-  
-  output$panelDisplay1 <- renderUI({
-    switch(input$panelSelector1,
-           "Violin Plot" = plotOutput("candidatePlot"),
-           "Upset Plot" = plotOutput("upsetPlot"),
-           "Summary Table" = dataTableOutput("summaryTable"))
-  })
-  
-  output$panelDisplay2 <- renderUI({
-    switch(input$panelSelector2,
-           "Multi-trait Genes" = dataTableOutput("uniqueGeneNamesTable"),
-           "Multi-trait Orthogroups" = dataTableOutput("multiTraitOrthogroupsTable"))
   })
   
   # Creating the dropdown for species selection
@@ -191,7 +197,7 @@ server <- function(input, output, session) {
       base_annotations = list(
         'Intersection size' = intersection_size(
           colour = "black",
-          text_colors = c("red", "white"),  # Changing color of numbers
+          text_colors = c("red", "blue"),  # Changing color of numbers
           text = list(size = 6)
         )
       ),
@@ -212,7 +218,7 @@ server <- function(input, output, session) {
   output$summaryTable <- renderDataTable({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
     table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
-    summary_stats <- table[, .(Genes = length(unique(`Gene Name`)), Mean = mean(pFDR), SD = sd(pFDR)), by = .(trait,org,present)]
+    summary_stats <- table[, .(Genes = length(unique(`Gene Name`)), Mean_genes_per_loci = mean(genecount), SD_genes_per_loci = sd(genecount)), by = .(trait,org,present)]
     summaryTable(summary_stats)  # Update the reactive variable for the summary table
     summary_stats
   })
@@ -300,21 +306,27 @@ server <- function(input, output, session) {
     # Add a new column for the count of traits
     multi_trait_orthogroups[, 'TraitCount' := unlist(lapply(strsplit(Traits, split = ", "), length))]
     
+    # Now, create the species present/absent columns
+    species_list <- unique(table$org)  # Get the unique species from the data
+    for (species in species_list) {
+      multi_trait_orthogroups[, paste0("IsPresent_", species) := Orthogroup %in% table[org == species]$Orthogroup]
+    }
+    
     # Order by TraitCount in descending order
     multi_trait_orthogroups <- multi_trait_orthogroups[order(-TraitCount)]
     
     multiTraitOrthogroupsTable(multi_trait_orthogroups)  # Update the reactive variable for the multi-trait orthogroups table
     multi_trait_orthogroups
-    
   })
-    # Download multi-trait orthogroups table
-    output$downloadMultiTraitOrthogroups <- downloadHandler(
-      filename = "multi_trait_orthogroups_table.csv",
-      content = function(file) {
-        write.csv(multiTraitOrthogroupsTable(), file, row.names = FALSE)
-      }
-    )
-  }
+  
+  # In the download button function
+  output$downloadMultiTraitOrthogroups <- downloadHandler(
+    filename = "multi_trait_orthogroups_table.csv",
+    content = function(file) {
+      write.csv(multiTraitOrthogroupsTable(), file, row.names = FALSE)
+    }
+  )
+}
 
 # Run the application 
 shinyApp(ui = ui, server = server)
