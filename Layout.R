@@ -7,8 +7,10 @@ library(ggplot2)
 library(ggrepel)
 library(zip)
 library(dplyr)
-library(VennDiagram)
+library(ggVennDiagram)
+library(sf)
 library(shinyjs)
+library(tidyverse)
 
 
 ui <- fluidPage(
@@ -65,7 +67,8 @@ ui <- fluidPage(
                                 div(class = "col-sm-6", h2("Venn Diagram Visualization")),
                                 div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadVennDiagram", "Download Multi-trait Venn Diagram"))
                             ),
-                            plotOutput("vennPlot")
+                            plotOutput("vennPlot", click = "plot_click"),
+                            tableOutput("vennTables")
                             )
                  )
         ),
@@ -336,39 +339,51 @@ server <- function(input, output, session) {
     }
   )
   
-  display_venn <- function(x, ...){
-    library(VennDiagram)
-    grid.newpage()
-    venn_object <- venn.diagram(x, filename = NULL, ...)
-    grid.draw(venn_object)
-  }
-  
-  output$vennPlot <- renderPlot({
-    
+  # reactive multi-trait ortholog group and genes tables for venn diagram
+  venn_data <- reactive({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
-    
+    # user selected orthogroup to display
     selected_orthogroup <- "OG0000141"
     
+    # creating Venn diagram object
     filtered_data <- candidateList()[trait %in% input$selected_trait & Orthogroup == selected_orthogroup]
     if (nrow(filtered_data) == 0) return(NULL)
-    
     venn_traits <- as.character(unique(filtered_data$trait))
     
-    venn_data <- lapply(venn_traits, function(trait_name){
+    x_data <- lapply(venn_traits, function(trait_name){
       filtered_data[trait == trait_name, unique(`Gene Name`)]
     })
+    names(x_data) <- venn_traits
     
-    names(venn_data) <- venn_traits
+    venn <- Venn(x_data)
     
-    display_venn(venn_data,
-      category.names = names(venn_data)
-    )
+    # pulling out regions for click point
+    venn_interactives <- process_data(venn)@region %>% 
+      mutate(centroid = st_point_on_surface(geometry),
+             x = map_dbl(centroid, 1),
+             y = map_dbl(centroid, 2)) %>% 
+      select(x, y, name, geometry)
+    
   })
-  # output$multiTraitVennDiagram <- renderDataTable({
-  #   if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
-  #   table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
-  # }
-  # )
+  
+  output$vennPlot <- renderPlot({
+                 
+    venn_data %>% 
+      ggplot(aes(x, y, fill = name, label = name)) +
+      geom_sf() +
+      geom_label()
+    
+  })
+  
+  output$vennTables <- renderTable({
+    
+    req(input$plot_click)
+    
+    nearPoints(st_drop_geometry(venn_data),
+               input$plot_click,
+               threshold = 100)
+    
+  })
 }
 
 # Run the application 
