@@ -352,7 +352,7 @@ server <- function(input, output, session) {
     filtered_data <- candidateList()[trait %in% input$selected_trait & Orthogroup == selected_orthogroup]
     if (nrow(filtered_data) == 0) return(NULL)
     
-    venn_traits <- selected_traits()
+    venn_traits <- as.character(unique(filtered_data$trait))
     
     venn_data <- lapply(venn_traits, function(trait_name){
       filtered_data[trait == trait_name, unique(`Gene Name`)]
