@@ -7,6 +7,8 @@ library(ggplot2)
 library(ggrepel)
 library(zip)
 library(dplyr)
+library(VennDiagram)
+library(shinyjs)
 
 
 ui <- fluidPage(
@@ -57,7 +59,12 @@ ui <- fluidPage(
                                 div(class = "col-sm-6", h2("Multi-trait Orthogroups")),
                                 div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadMultiTraitOrthogroups", "Download Multi-trait Orthogroups"))
                             ),
-                            dataTableOutput("multiTraitOrthogroupsTable"))
+                            dataTableOutput("multiTraitOrthogroupsTable")),
+                   tabPanel("Venn Diagram Visualization",
+                            selectInput("selectTraits", "select traits for Venn Diagram", NULL, multiple = T),
+                            actionButton("generateVenn", "GO"),
+                            plotOutput("vennPlot")
+                            )
                  )
         ),
         tabPanel("Help",
@@ -91,7 +98,7 @@ ui <- fluidPage(
 )
 
 # Define server logic 
-server <- function(input, output) {
+server <- function(input, output, session) {
   processed_files <- reactive({
     file_paths <- NULL
     for (i in seq_along(input$files$name)) {
@@ -326,6 +333,38 @@ server <- function(input, output) {
       write.csv(multiTraitOrthogroupsTable(), file, row.names = FALSE)
     }
   )
+  
+  observe({
+    if (is.null(candidateList())) return()
+    updateSelectInput(session, "selectTraits", choices = unique(candidateList()$trait))
+  })
+  
+  observeEvent(input$generateVenn, {
+    selected_traits <- input$selectTraits
+    if(length(selected_traits) < 2 ) {
+      showNotification("Please select at least 2 traits for Venn Diagram", type = "error")
+      return()
+    }
+  })
+  
+  filtered_data <- candidateList()[trait %in% selected_traits]
+  venn_data <- lapply(selected_traits, function(trait_name){
+    filtered_data[trait == trait_name, unique(Orthogroup)]
+  })
+  
+  names(venn_data) <- selected_traits
+  output$vennPlot <- renderPlot({
+    venn.diagram(
+      x = venn_data,
+      category.names = names(venn_data),
+      output = NULL
+    )
+  })
+  # output$multiTraitVennDiagram <- renderDataTable({
+  #   if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
+  #   table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
+  # }
+  # )
 }
 
 # Run the application 

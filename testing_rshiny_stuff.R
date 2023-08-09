@@ -1,5 +1,18 @@
 ### overall questions
+rm(list = ls())
 
+concatenate_lists<-function(path_name, pattern=NULL, select=NULL){
+  combined<-foreach(i=list.files(path_name, full.names = T, pattern=pattern),
+                    .packages = packages.loaded(),
+                    .combine = rbind) %do% {
+                      
+                      l<-data.table::fread(i, sep = ",", header = T, select=select)
+                      return(l)
+                    }
+  return(combined)
+}
+
+candidateList <- concatenate_lists("./CGAS/results/new_outgroup/rerun_w_pvals/candidate_lists/")
 # How often is any gene found in multiple traits?
 
 MG <- reshape(
