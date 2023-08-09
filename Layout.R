@@ -61,8 +61,10 @@ ui <- fluidPage(
                             ),
                             dataTableOutput("multiTraitOrthogroupsTable")),
                    tabPanel("Venn Diagram Visualization",
-                            selectInput("selectTraits", "select traits for Venn Diagram", NULL, multiple = T),
-                            actionButton("generateVenn", "GO"),
+                            div(class = "row",
+                                div(class = "col-sm-6", h2("Venn Diagram Visualization")),
+                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadVennDiagram", "Download Multi-trait Venn Diagram"))
+                            ),
                             plotOutput("vennPlot")
                             )
                  )
@@ -343,27 +345,20 @@ server <- function(input, output, session) {
   
   output$vennPlot <- renderPlot({
     
-    observe({
-      if (is.null(candidateList())) return()
-      updateSelectInput(session, "selectTraits", choices = unique(candidateList()$trait))
+    if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
+    
+    selected_orthogroup <- "OG0000141"
+    
+    filtered_data <- candidateList()[trait %in% input$selected_trait & Orthogroup == selected_orthogroup]
+    if (nrow(filtered_data) == 0) return(NULL)
+    
+    venn_traits <- selected_traits()
+    
+    venn_data <- lapply(venn_traits, function(trait_name){
+      filtered_data[trait == trait_name, unique(`Gene Name`)]
     })
     
-    observeEvent(input$generateVenn, {
-      selected_traits <- input$selectTraits
-      if(length(selected_traits) < 2 ) {
-        showNotification("Please select at least 2 traits for Venn Diagram", type = "error")
-        return()
-      }
-    })
-    
-    selected_traits <- input$selectTraits
-    
-    filtered_data <- candidateList()[trait %in% selected_traits]
-    venn_data <- lapply(selected_traits, function(trait_name){
-      filtered_data[trait == trait_name, unique(Orthogroup)]
-    })
-    
-    names(venn_data) <- selected_traits
+    names(venn_data) <- venn_traits
     
     display_venn(venn_data,
       category.names = names(venn_data)
