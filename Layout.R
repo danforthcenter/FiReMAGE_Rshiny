@@ -367,8 +367,10 @@ server <- function(input, output, session) {
   })
   
   output$vennPlot <- renderPlot({
+    
+    venn_plot <- venn_data()
                  
-    venn_data %>% 
+    venn_plot %>% 
       ggplot(aes(x, y, fill = name, label = name)) +
       geom_sf() +
       geom_label()
@@ -379,7 +381,9 @@ server <- function(input, output, session) {
     
     req(input$plot_click)
     
-    nearPoints(st_drop_geometry(venn_data),
+    venn_tab <- venn_data()
+    
+    nearPoints(st_drop_geometry(venn_tab),
                input$plot_click,
                threshold = 100)
     
