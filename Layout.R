@@ -7,12 +7,8 @@ library(ggplot2)
 library(ggrepel)
 library(zip)
 library(dplyr)
-library(ggVennDiagram)
-library(sf)
+library(VennDiagram)
 library(shinyjs)
-library(tidyverse)
-
-
 ui <- fluidPage(
   titlePanel("FireMAGE Data Visualization"),
   sidebarLayout(
@@ -67,9 +63,11 @@ ui <- fluidPage(
                                 div(class = "col-sm-6", h2("Venn Diagram Visualization")),
                                 div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadVennDiagram", "Download Multi-trait Venn Diagram"))
                             ),
-                            plotOutput("vennPlot", click = "plot_click"),
-                            tableOutput("vennTables")
-                            )
+                            textInput("orthogroupInput", "Enter Orthogroup Id", ""),
+                            actionButton("goButton", "Go"),
+                            plotOutput("vennPlot")
+                   )
+                   
                  )
         ),
         tabPanel("Help",
@@ -101,7 +99,6 @@ ui <- fluidPage(
     )
   )
 )
-
 # Define server logic 
 server <- function(input, output, session) {
   processed_files <- reactive({
@@ -138,9 +135,6 @@ server <- function(input, output, session) {
       }
     })
   })
-  
-  
-  
   candidateList <- reactive({
     if (is.null(data_list())) return(NULL)
     rbindlist(data_list(), fill = TRUE)
@@ -186,15 +180,12 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 40, hjust = 1)) +
       ylab("FDR: mean(Permutations)/Actual") + xlab("species in orthogroup")
   })
-  
-  
   output$upsetPlot <- renderPlot({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
     candidateList <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
     casted_groups <- dcast(candidateList, Orthogroup + trait ~ org, fill = 0, value.var = "loci", fun.aggregate = function(x) {
       length(x) > 0
     })
-    
     upset(
       casted_groups[, -c(1, 2)],
       as.character(colnames(casted_groups)[-c(1, 2)]),
@@ -216,7 +207,6 @@ server <- function(input, output, session) {
       themes = upset_default_themes(text = element_text(size = 25))
     )
   })
-  
   fullTable <- reactiveVal()  # Create a reactive variable to hold the full table
   summaryTable <- reactiveVal()  # Create a reactive variable to hold the summary table
   
@@ -226,7 +216,6 @@ server <- function(input, output, session) {
     fullTable(table)  # Update the reactive variable for the full table
     table
   })
-  
   output$summaryTable <- renderDataTable({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
     table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait]
@@ -242,7 +231,6 @@ server <- function(input, output, session) {
       write.csv(fullTable(), file, row.names = FALSE)
     }
   )
-  
   # Download summary table
   output$downloadSummary <- downloadHandler(
     filename = "summary_table.csv",
@@ -250,15 +238,12 @@ server <- function(input, output, session) {
       write.csv(summaryTable(), file, row.names = FALSE)
     }
   )
-  
   # Creating the dropdown for trait selection in Gene Names
   output$trait_select_gene <- renderUI({
     if (is.null(candidateList())) return(NULL)
     candidateList <- candidateList()
     selectInput("selected_trait_gene", "Select Trait for Gene Names", choices = unique(candidateList$trait), selected = unique(candidateList$trait)[1], multiple = TRUE)
   })
-  
-  
   # Adjust this data table for unique gene names
   uniqueGeneNamesTable <- reactiveVal()  # Create a reactive variable to hold the unique gene names table
   
@@ -269,7 +254,6 @@ server <- function(input, output, session) {
     uniqueGeneNamesTable(unique_gene_table)  # Update the reactive variable for the unique gene names table
     unique_gene_table
   })
-  
   output$uniqueGeneNamesTable <- renderDataTable({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait_gene)) return()
     table <- candidateList()[org %in% input$selected_species & trait %in% input$selected_trait_gene]
@@ -289,10 +273,6 @@ server <- function(input, output, session) {
     uniqueGeneNamesTable(unique_gene_table)  # Update the reactive variable for the unique gene names table
     unique_gene_table
   })
-  
-  
-  
-  
   # Download multi-trait genes table
   output$downloadMultiTraitGenes <- downloadHandler(
     filename = "multi_trait_genes_table.csv",
@@ -300,10 +280,8 @@ server <- function(input, output, session) {
       write.csv(uniqueGeneNamesTable(), file, row.names = FALSE)
     }
   )
-  
   # Create a reactive variable to hold the multi-trait orthogroups table
   multiTraitOrthogroupsTable <- reactiveVal() 
-  
   # In the server function
   output$multiTraitOrthogroupsTable <- renderDataTable({
     if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
@@ -339,56 +317,38 @@ server <- function(input, output, session) {
     }
   )
   
-  # reactive multi-trait ortholog group and genes tables for venn diagram
-  venn_data <- reactive({
-    if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait)) return()
-    # user selected orthogroup to display
-    selected_orthogroup <- "OG0000141"
-    
-    # creating Venn diagram object
-    filtered_data <- candidateList()[trait %in% input$selected_trait & Orthogroup == selected_orthogroup]
-    if (nrow(filtered_data) == 0) return(NULL)
-    venn_traits <- as.character(unique(filtered_data$trait))
-    
-    x_data <- lapply(venn_traits, function(trait_name){
-      filtered_data[trait == trait_name, unique(`Gene Name`)]
-    })
-    names(x_data) <- venn_traits
-    
-    venn <- Venn(x_data)
-    
-    # pulling out regions for click point
-    venn_interactives <- process_data(venn)@region %>% 
-      mutate(centroid = st_point_on_surface(geometry),
-             x = map_dbl(centroid, 1),
-             y = map_dbl(centroid, 2)) %>% 
-      select(x, y, name, geometry)
-    
+  selected_orthogroup <- reactiveVal(NULL)
+  
+  observeEvent(input$goButton, {
+    selected_orthogroup(input$orthogroupInput)
   })
+  
+  display_venn <- function(x, ...) {
+    library(VennDiagram)
+    grid.newpage()
+    venn_object <- venn.diagram(x, filename = NULL, ...)
+    grid.draw(venn_object)
+  }
   
   output$vennPlot <- renderPlot({
+    if (is.null(candidateList()) | is.null(input$selected_species) | is.null(input$selected_trait) | is.null(selected_orthogroup())) return()
     
-    venn_plot <- venn_data()
-                 
-    venn_plot %>% 
-      ggplot(aes(x, y, fill = name, label = name)) +
-      geom_sf() +
-      geom_label()
+    filtered_data <- candidateList()[trait %in% input$selected_trait & Orthogroup == selected_orthogroup()]
+    if (nrow(filtered_data) == 0) return(NULL)
     
+    venn_traits <- as.character(unique(filtered_data$trait))
+    
+    venn_data <- lapply(venn_traits, function(trait_name){
+      filtered_data[trait == trait_name, unique(`Gene Name`)]
+    })
+    
+    names(venn_data) <- venn_traits
+    
+    display_venn(venn_data,
+                 category.names = names(venn_data)
+    )
   })
   
-  output$vennTables <- renderTable({
-    
-    req(input$plot_click)
-    
-    venn_tab <- venn_data()
-    
-    nearPoints(st_drop_geometry(venn_tab),
-               input$plot_click,
-               threshold = 100)
-    
-  })
 }
-
 # Run the application 
 shinyApp(ui = ui, server = server)
