@@ -347,13 +347,15 @@ server <- function(input, output, session) {
     }
   })
   
-  filtered_data <- candidateList()[trait %in% selected_traits]
-  venn_data <- lapply(selected_traits, function(trait_name){
-    filtered_data[trait == trait_name, unique(Orthogroup)]
-  })
-  
-  names(venn_data) <- selected_traits
   output$vennPlot <- renderPlot({
+    
+    filtered_data <- candidateList()[trait %in% selected_traits]
+    venn_data <- lapply(selected_traits, function(trait_name){
+      filtered_data[trait == trait_name, unique(Orthogroup)]
+    })
+    
+    names(venn_data) <- selected_traits
+    
     venn.diagram(
       x = venn_data,
       category.names = names(venn_data),
