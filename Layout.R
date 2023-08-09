@@ -334,20 +334,29 @@ server <- function(input, output, session) {
     }
   )
   
-  observe({
-    if (is.null(candidateList())) return()
-    updateSelectInput(session, "selectTraits", choices = unique(candidateList()$trait))
-  })
-  
-  observeEvent(input$generateVenn, {
-    selected_traits <- input$selectTraits
-    if(length(selected_traits) < 2 ) {
-      showNotification("Please select at least 2 traits for Venn Diagram", type = "error")
-      return()
-    }
-  })
+  display_venn <- function(x, ...){
+    library(VennDiagram)
+    grid.newpage()
+    venn_object <- venn.diagram(x, filename = NULL, ...)
+    grid.draw(venn_object)
+  }
   
   output$vennPlot <- renderPlot({
+    
+    observe({
+      if (is.null(candidateList())) return()
+      updateSelectInput(session, "selectTraits", choices = unique(candidateList()$trait))
+    })
+    
+    observeEvent(input$generateVenn, {
+      selected_traits <- input$selectTraits
+      if(length(selected_traits) < 2 ) {
+        showNotification("Please select at least 2 traits for Venn Diagram", type = "error")
+        return()
+      }
+    })
+    
+    selected_traits <- input$selectTraits
     
     filtered_data <- candidateList()[trait %in% selected_traits]
     venn_data <- lapply(selected_traits, function(trait_name){
@@ -356,10 +365,8 @@ server <- function(input, output, session) {
     
     names(venn_data) <- selected_traits
     
-    venn.diagram(
-      x = venn_data,
-      category.names = names(venn_data),
-      output = NULL
+    display_venn(venn_data,
+      category.names = names(venn_data)
     )
   })
   # output$multiTraitVennDiagram <- renderDataTable({
