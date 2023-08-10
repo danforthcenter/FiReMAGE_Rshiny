@@ -9,6 +9,7 @@ library(zip)
 library(dplyr)
 library(VennDiagram)
 library(shinyjs)
+
 ui <- fluidPage(
   titlePanel("FireMAGE Data Visualization"),
   sidebarLayout(
@@ -61,7 +62,7 @@ ui <- fluidPage(
                    tabPanel("Venn Diagram Visualization",
                             div(class = "row",
                                 div(class = "col-sm-6", h2("Venn Diagram Visualization")),
-                                div(class = "col-sm-6", style = "text-align: right;", downloadButton("downloadVennDiagram", "Download Multi-trait Venn Diagram"))
+                                div(class = "col-sm-6", style = "text-align: right;")
                             ),
                             textInput("orthogroupInput", "Enter Orthogroup Id", ""),
                             actionButton("goButton", "Go"),
@@ -86,9 +87,21 @@ ui <- fluidPage(
                               p("Violin Plot: This plot visualizes the distribution of FDR (False Discovery Rate) values for different traits and levels of species presence. The width of the 'violin' shape at any given y value (FDR) represents the proportion of data that falls at that level. It's a useful plot for understanding the distribution of your data and spotting any outliers or significant clusters."),
                               p("Upset Plot: This plot displays the intersection of traits for different species. It is similar to a Venn diagram but more suitable for datasets with many sets and complex overlaps. Each row of the matrix at the bottom represents a set (in this case, a species), and each column of the matrix represents a combination of intersections. The bar chart above the matrix indicates the size of each intersection."),
                               h3("Tables"),
-                              p("Summary Table: View a summary of the gene count, mean FDR, and standard deviation of FDR for each trait and species."),
+                              p("Summary Table: View a summary of the genes, mean of the genes per loci, and standard deviation of genes per loci for each trait and species."),
                               p("Full Table: View the complete data for the selected species and traits."),
-                              p("Multi-trait Genes: View the genes associated with multiple traits."),
+                            
+                              h3("Multi-trait Tab"),
+                              p("This tab provides an in-depth look into genes and orthogroups that are associated with multiple traits, and it offers a Venn diagram visualization."),
+                              
+                              h3("Genes Sub-tab"),
+                              p("Explore genes that are associated with multiple traits. Users can select specific traits and view a table with the corresponding genes. There's also an option to download this Multi-trait Genes data."),
+                              
+                              h3("Orthogroups Sub-tab"),
+                              p("Displays orthogroups that are associated with multiple traits. It provides a table listing these orthogroups, and users can download this Multi-trait Orthogroups data."),
+                              
+                              h3("Venn Diagram Visualization Sub-tab"),
+                              p("This visualization aids in understanding the overlap and relationships between different orthogroups. Users can input a specific Orthogroup Id and visualize its intersections with other orthogroups. The 'Go' button triggers the visualization."),
+                              
                               h3("Download"),
                               p("You can download the Summary Table, Full Table, and Multi-trait Genes Table as CSV files.")
                           )
